@@ -4,9 +4,8 @@ const { google } = require('googleapis');
 const app = express();
 
 app.use(express.json());
-app.use(express.json());
 
-// Adiciona isso aqui:
+// Headers CORS
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
