@@ -59,16 +59,42 @@ async function adicionarNaPlanilha(dados) {
   }
 }
 
-// Rota principal do webhook - RESPONDE IMEDIATAMENTE
+// Rota principal do webhook - aceita com ou sem IDs no path
 app.post('/webhook', async (req, res) => {
-  console.log('📩 Webhook recebido!');
+  console.log('📩 Webhook recebido em /webhook');
   console.log('Dados:', JSON.stringify(req.body, null, 2));
   
-  // RESPONDE IMEDIATAMENTE pro WaSpeed
-  res.status(200).json({ 
-    success: true, 
-    message: 'Recebido!' 
-  });
+  res.status(200).json({ success: true, message: 'Recebido!' });
+  
+  try {
+    const dados = req.body;
+    if (dados.eventID) {
+      await adicionarNaPlanilha(dados);
+      console.log('✅ Processamento completo!');
+    }
+  } catch (error) {
+    console.error('❌ Erro:', error);
+  }
+});
+
+// Rota com IDs (igual ao fiqon)
+app.post('/webhook/:id1/:id2', async (req, res) => {
+  console.log('📩 Webhook recebido em /webhook/:id1/:id2');
+  console.log('IDs:', req.params.id1, req.params.id2);
+  console.log('Dados:', JSON.stringify(req.body, null, 2));
+  
+  res.status(200).json({ success: true, message: 'Recebido!' });
+  
+  try {
+    const dados = req.body;
+    if (dados.eventID) {
+      await adicionarNaPlanilha(dados);
+      console.log('✅ Processamento completo!');
+    }
+  } catch (error) {
+    console.error('❌ Erro:', error);
+  }
+});
   
   // Processa os dados DEPOIS de responder
   try {
