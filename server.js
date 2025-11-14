@@ -5,42 +5,34 @@ const { Pool } = require('pg');
 const app = express();
 app.use(express.json({ limit: '50mb' }));
 
-// Conexão PostgreSQL Supabase
 const pool = new Pool({
 connectionString: process.env.DATABASE_URL,
 ssl: { rejectUnauthorized: false }
 });
 
-// Testar conexão
 pool.query('SELECT NOW()', (err, res) => {
 if (err) {
-console.error('❌ Erro ao conectar:', err);
+console.error('Erro ao conectar:', err);
 } else {
-console.log('✅ Supabase Conectado:', res.rows.now);
+console.log('Supabase Conectado:', res.rows.now);
 }
 });
 
-// Rota inicial
 app.get('/', (req, res) => {
-res.send( <h1>✅ Webhook WaSpeed Ativo</h1> <p>Status: Supabase Conectado</p> <p>Endpoints:</p> <ul> <li>POST /webhook/mensagens - Recebe mensagens WhatsApp</li> <li>POST /webhook/crm - Recebe eventos CRM</li> </ul> );
+res.send( <h1>Webhook WaSpeed Ativo</h1> <p>Status: Supabase Conectado</p> <p>Endpoints:</p> <ul> <li>POST /webhook/mensagens - Recebe mensagens WhatsApp</li> <li>POST /webhook/crm - Recebe eventos CRM</li> </ul> );
 });
 
-// ==========================================
-// WEBHOOK: MENSAGENS (WhatsApp)
-// ==========================================
 app.post('/webhook/mensagens', async (req, res) => {
 try {
 const dados = req.body;
-console.log('📥 Mensagem recebida:', dados.number);
+console.log('Mensagem recebida:', dados.number);
 
 text
-// Extrair campos do JSON
 const message_id = dados.eventDetails?.id?.id || null;
 const message_serialized = dados.eventDetails?.id?._serialized || null;
 const timestamp_unix = dados.eventDetails?.t || dados.eventDetails?.timestamp || 0;
 const received_at = dados.receivedAt || new Date().toISOString();
 
-// Contato/Conversa
 const contact_name = dados.name || null;
 const contact_number = dados.number || null;
 const from_number = dados.eventDetails?.from || null;
@@ -50,19 +42,16 @@ const group_id = is_group ? dados.number : null;
 const author_number = dados.eventDetails?.author?._serialized || null;
 const notify_name = dados.eventDetails?.notifyName || null;
 
-// Conteúdo
 const message_type = dados.eventDetails?.type || dados.lastMessage?.type || 'text';
 const body_text = dados.eventDetails?.body || null;
 const body_size = body_text ? body_text.length : 0;
 
-// Status
 const ack_status = dados.eventDetails?.ack || 0;
 const from_me = dados.eventDetails?.id?.fromMe || false;
 const is_new_msg = dados.eventDetails?.isNewMsg || false;
 const viewed = dados.eventDetails?.viewed || false;
 const starred = dados.eventDetails?.star || false;
 
-// Mídia
 const media_mimetype = dados.eventDetails?.mimetype || null;
 const media_size = dados.eventDetails?.size || null;
 const media_width = dados.eventDetails?.width || null;
@@ -72,7 +61,6 @@ const media_direct_path = dados.eventDetails?.directPath || null;
 const media_key = dados.eventDetails?.mediaKey || null;
 const file_hash = dados.eventDetails?.filehash || null;
 
-// Contexto
 const is_reply = dados.eventDetails?.parentMsgKey?.id ? true : false;
 const parent_msg_id = dados.eventDetails?.parentMsgKey?.id || null;
 const parent_msg_serialized = dados.eventDetails?.parentMsgKey?._serialized || null;
@@ -82,22 +70,18 @@ const mentioned_users = dados.eventDetails?.mentionedJidList || [];
 const is_view_once = dados.eventDetails?.isViewOnce || false;
 const is_avatar = dados.eventDetails?.isAvatar || false;
 
-// Chamadas
 const is_video_call = dados.eventDetails?.isVideoCall || false;
 const call_duration = dados.eventDetails?.callDuration || null;
 
-// Labels e CRM
 const labels = dados.labels || [];
 const unread_count = dados.unreadMessages || 0;
 const user_assigned = dados.user || null;
 const perfil_contato = dados.perfilContato || null;
 
-// Técnico
 const event_id = dados.eventID || null;
 const client_received_ts = dados.eventDetails?.clientReceivedTsMillis || null;
 const last_update_ts = dados.eventDetails?.lastUpdateFromServerTs || null;
 
-// Inserir no banco (UPSERT)
 await pool.query(`
   INSERT INTO mensagens (
     message_id, message_serialized, timestamp_unix, received_at,
@@ -142,7 +126,6 @@ await pool.query(`
   JSON.stringify(dados)
 ]);
 
-// Atualizar/Criar contato
 await pool.query(`
   INSERT INTO contatos (numero, nome, is_group, user_assigned, labels, perfil, ultima_mensagem, ultima_interacao)
   VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
@@ -162,24 +145,20 @@ await pool.query(`
   JSON.stringify(labels), JSON.stringify(perfil_contato), from_me
 ]);
 
-console.log('✅ Mensagem salva:', message_serialized);
+console.log('Mensagem salva:', message_serialized);
 res.status(200).json({ status: 'success', message: 'Mensagem salva' });
 } catch (error) {
-console.error('❌ Erro ao salvar mensagem:', error);
+console.error('Erro ao salvar mensagem:', error);
 res.status(500).json({ status: 'error', message: error.message });
 }
 });
 
-// ==========================================
-// WEBHOOK: CRM (Eventos)
-// ==========================================
 app.post('/webhook/crm', async (req, res) => {
 try {
 const dados = req.body;
-console.log('📥 Evento CRM recebido:', dados.eventDetails?.type);
+console.log('Evento CRM recebido:', dados.eventDetails?.type);
 
 text
-// Extrair campos
 const event_id = dados.eventDetails?.id || null;
 const event_type = dados.eventDetails?.type || null;
 const received_at = dados.receivedAt || new Date().toISOString();
@@ -198,7 +177,6 @@ const last_message_timestamp = dados.lastMessage?.timestamp || null;
 
 const perfil_contato = dados.perfilContato || null;
 
-// Inserir no banco
 await pool.query(`
   INSERT INTO eventos_crm (
     event_id, event_type, received_at,
@@ -216,7 +194,6 @@ await pool.query(`
   JSON.stringify(perfil_contato), JSON.stringify(dados)
 ]);
 
-// Atualizar contato com labels
 if (contact_number) {
   await pool.query(`
     INSERT INTO contatos (numero, nome, user_assigned, labels, perfil, ultima_interacao)
@@ -232,16 +209,15 @@ if (contact_number) {
   `, [contact_number, contact_name, user_assigned, JSON.stringify(labels), JSON.stringify(perfil_contato)]);
 }
 
-console.log('✅ Evento CRM salvo:', event_type);
+console.log('Evento CRM salvo:', event_type);
 res.status(200).json({ status: 'success', message: 'Evento CRM salvo' });
 } catch (error) {
-console.error('❌ Erro ao salvar evento CRM:', error);
+console.error('Erro ao salvar evento CRM:', error);
 res.status(500).json({ status: 'error', message: error.message });
 }
 });
 
-// Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-console.log(🚀 Servidor rodando na porta ${PORT});
+console.log(Servidor rodando na porta ${PORT});
 });
