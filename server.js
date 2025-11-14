@@ -14,7 +14,7 @@ pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error('Erro ao conectar:', err);
   } else {
-    console.log('Supabase Conectado:', res.rows.now);
+    console.log('Supabase Conectado:', res.rows[0].now);
   }
 });
 
@@ -229,15 +229,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
-```
-
----
-
-## 📝 CHECKLIST ANTES DE FAZER COMMIT:
-
-Verifique se o código tem:
-- ✅ Linha 18: `res.rows[0].now` (com `[0]`)
-- ✅ Linha 22-32: HTML com crases `` ` `` no início e fim
-- ✅ Linha 231: console.log com crases `` `Servidor rodando...` ``
-
-**Já fez o commit com a versão corrigida?** Me avise para monitorarmos o deploy no Render! 🚀
