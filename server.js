@@ -1,8 +1,10 @@
+``````javascript
 require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 
 const app = express();
+app.set('trust proxy', true);
 app.use(express.json({ limit: '50mb' }));
 
 const pool = new Pool({
@@ -33,7 +35,7 @@ app.get('/', (req, res) => {
 app.post('/webhook/mensagens', async (req, res) => {
   try {
     const dados = req.body;
-    console.log('Mensagem recebida:', dados.number);
+    console.log('[WEBHOOK] Mensagem recebida!');
 
     const message_id = dados.eventDetails?.id?.id || null;
     const message_serialized = dados.eventDetails?.id?._serialized || null;
@@ -152,7 +154,7 @@ app.post('/webhook/mensagens', async (req, res) => {
       JSON.stringify(labels), JSON.stringify(perfil_contato), from_me
     ]);
 
-    console.log('Mensagem salva:', message_serialized);
+    console.log('✅ Mensagem salva:', message_serialized);
     res.status(200).json({ status: 'success', message: 'Mensagem salva' });
 
   } catch (error) {
@@ -164,7 +166,7 @@ app.post('/webhook/mensagens', async (req, res) => {
 app.post('/webhook/crm', async (req, res) => {
   try {
     const dados = req.body;
-    console.log('Evento CRM recebido:', dados.eventDetails?.type);
+    console.log('[WEBHOOK] CRM recebido!');
 
     const event_id = dados.eventDetails?.id || null;
     const event_type = dados.eventDetails?.type || null;
@@ -216,7 +218,7 @@ app.post('/webhook/crm', async (req, res) => {
       `, [contact_number, contact_name, user_assigned, JSON.stringify(labels), JSON.stringify(perfil_contato)]);
     }
 
-    console.log('Evento CRM salvo:', event_type);
+    console.log('✅ Evento CRM salvo:', event_type);
     res.status(200).json({ status: 'success', message: 'Evento CRM salvo' });
 
   } catch (error) {
@@ -229,3 +231,4 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
+```
