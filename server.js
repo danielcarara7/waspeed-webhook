@@ -1,132 +1,114 @@
-require('dotenv').config();
 const express = require('express');
-const { Pool } = require('pg');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
-app.set('trust proxy', true);
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json());
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
+const PORT = process.env.PORT || 3000;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('Erro ao conectar:', err);
-  } else {
-    console.log('Supabase Conectado:', res.rows[0].now);
-  }
-});
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 app.get('/', (req, res) => {
-  res.send(`
-    <h1>Webhook WaSpeed Ativo</h1>
-    <p>Status: Supabase Conectado</p>
-    <p>Endpoints:</p>
-    <ul>
-      <li>POST /webhook/mensagens - Recebe mensagens WhatsApp</li>
-      <li>POST /webhook/crm - Recebe eventos CRM</li>
-    </ul>
-  `);
-});
-
-app.post('/webhook/mensagens', async (req, res) => {
-  try {
-    const dados = req.body;
-    console.log('[WEBHOOK] Mensagem recebida!');
-
-    const message_id = dados.eventDetails?.id?.id || null;
-    const message_serialized = dados.eventDetails?.id?._serialized || null;
-    const timestamp_unix = dados.eventDetails?.t || dados.eventDetails?.timestamp || 0;
-    const received_at = dados.receivedAt || new Date().toISOString();
-    const contact_name = dados.name || null;
-    const contact_number = dados.number || null;
-    const from_number = dados.eventDetails?.from || null;
-    const to_number = dados.eventDetails?.to || null;
-    const is_group = (dados.number || '').includes('@g.us');
-    const group_id = is_group ? dados.number : null;
-    const author_number = dados.eventDetails?.author?._serialized || null;
-    const notify_name = dados.eventDetails?.notifyName || null;
-    const message_type = dados.eventDetails?.type || dados.lastMessage?.type || 'text';
-    const body_text = dados.eventDetails?.body || null;
-    const body_size = body_text ? body_text.length : 0;
-    const ack_status = dados.eventDetails?.ack || 0;
-    const from_me = dados.eventDetails?.id?.fromMe || false;
-    const is_new_msg = dados.eventDetails?.isNewMsg || false;
-    const viewed = dados.eventDetails?.viewed || false;
-    const starred = dados.eventDetails?.star || false;
-    const media_mimetype = dados.eventDetails?.mimetype || null;
-    const media_size = dados.eventDetails?.size || null;
-    const media_width = dados.eventDetails?.width || null;
-    const media_height = dados.eventDetails?.height || null;
-    const media_url = dados.eventDetails?.deprecatedMms3Url || null;
-    const media_direct_path = dados.eventDetails?.directPath || null;
-    const media_key = dados.eventDetails?.mediaKey || null;
-    const file_hash = dados.eventDetails?.filehash || null;
-    const is_reply = dados.eventDetails?.parentMsgKey?.id ? true : false;
-    const parent_msg_id = dados.eventDetails?.parentMsgKey?.id || null;
-    const parent_msg_serialized = dados.eventDetails?.parentMsgKey?._serialized || null;
-    const has_reaction = dados.eventDetails?.hasReaction || false;
-    const is_forwarded = dados.eventDetails?.isForwarded || false;
-    const mentioned_users = dados.eventDetails?.mentionedJidList || [];
-    const is_view_once = dados.eventDetails?.isViewOnce || false;
-    const is_avatar = dados.eventDetails?.isAvatar || false;
-    const is_video_call = dados.eventDetails?.isVideoCall || false;
-    const call_duration = dados.eventDetails?.callDuration || null;
-    const labels = dados.labels || [];
-    const unread_count = dados.unreadMessages || 0;
-    const user_assigned = dados.user || null;
-    const perfil_contato = dados.perfilContato || null;
-    const event_id = dados.eventID || null;
-    const client_received_ts = dados.eventDetails?.clientReceivedTsMillis || null;
-    const last_update_ts = dados.eventDetails?.lastUpdateFromServerTs || null;
-
-    await pool.query(`INSERT INTO mensagens (message_id, message_serialized, timestamp_unix, received_at, contact_name, contact_number, from_number, to_number, is_group, group_id, author_number, notify_name, message_type, body_text, body_size, ack_status, from_me, is_new_msg, viewed, starred, media_mimetype, media_size, media_width, media_height, media_url, media_direct_path, media_key, file_hash, is_reply, parent_msg_id, parent_msg_serialized, has_reaction, is_forwarded, mentioned_users, is_view_once, is_avatar, is_video_call, call_duration, labels, unread_count, user_assigned, perfil_contato, event_id, client_received_ts, last_update_ts, dados_completos) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46) ON CONFLICT (message_serialized) DO UPDATE SET ack_status = EXCLUDED.ack_status, viewed = EXCLUDED.viewed, starred = EXCLUDED.starred, has_reaction = EXCLUDED.has_reaction`, [message_id, message_serialized, timestamp_unix, received_at, contact_name, contact_number, from_number, to_number, is_group, group_id, author_number, notify_name, message_type, body_text, body_size, ack_status, from_me, is_new_msg, viewed, starred, media_mimetype, media_size, media_width, media_height, media_url, media_direct_path, media_key, file_hash, is_reply, parent_msg_id, parent_msg_serialized, has_reaction, is_forwarded, mentioned_users, is_view_once, is_avatar, is_video_call, call_duration, JSON.stringify(labels), unread_count, user_assigned, JSON.stringify(perfil_contato), event_id, client_received_ts, last_update_ts, JSON.stringify(dados)]);
-
-    await pool.query(`INSERT INTO contatos (numero, nome, is_group, user_assigned, labels, perfil, ultima_mensagem, ultima_interacao) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) ON CONFLICT (numero) DO UPDATE SET nome = COALESCE(EXCLUDED.nome, contatos.nome), user_assigned = COALESCE(EXCLUDED.user_assigned, contatos.user_assigned), labels = EXCLUDED.labels, ultima_mensagem = NOW(), ultima_interacao = NOW(), total_mensagens = contatos.total_mensagens + 1, mensagens_enviadas = contatos.mensagens_enviadas + CASE WHEN $7 THEN 1 ELSE 0 END, mensagens_recebidas = contatos.mensagens_recebidas + CASE WHEN $7 THEN 0 ELSE 1 END, atualizado_em = NOW()`, [contact_number, contact_name, is_group, user_assigned, JSON.stringify(labels), JSON.stringify(perfil_contato), from_me]);
-
-    console.log('Mensagem salva:', message_serialized);
-    res.status(200).json({ status: 'success', message: 'Mensagem salva' });
-  } catch (error) {
-    console.error('Erro ao salvar mensagem:', error);
-    res.status(500).json({ status: 'error', message: error.message });
-  }
+  res.json({ status: 'Webhook receiver ativo', timestamp: new Date().toISOString() });
 });
 
 app.post('/webhook/crm', async (req, res) => {
   try {
-    const dados = req.body;
-    console.log('[WEBHOOK] CRM recebido!');
-    const event_id = dados.eventDetails?.id || null;
-    const event_type = dados.eventDetails?.type || null;
-    const received_at = dados.receivedAt || new Date().toISOString();
-    const contact_name = dados.name || null;
-    const contact_number = dados.number || null;
-    const user_assigned = dados.user || null;
-    const labels = dados.labels || [];
-    const label_names = labels.map(l => l.name);
-    const label_count = labels.length;
-    const unread_messages = dados.unreadMessages || 0;
-    const last_message_type = dados.lastMessage?.type || null;
-    const last_message_timestamp = dados.lastMessage?.timestamp || null;
-    const perfil_contato = dados.perfilContato || null;
+    const payload = req.body;
 
-    await pool.query(`INSERT INTO eventos_crm (event_id, event_type, received_at, contact_name, contact_number, user_assigned, labels, label_names, label_count, unread_messages, last_message_type, last_message_timestamp, perfil_contato, dados_completos) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`, [event_id, event_type, received_at, contact_name, contact_number, user_assigned, JSON.stringify(labels), label_names, label_count, unread_messages, last_message_type, last_message_timestamp, JSON.stringify(perfil_contato), JSON.stringify(dados)]);
+    const { error } = await supabase.from('webhook_crm').insert({
+      data_hora: payload.lastMessage?.timestamp ? new Date(payload.lastMessage.timestamp * 1000).toISOString() : null,
+      usuario: payload.user,
+      cliente: payload.name,
+      numero_usuario: payload.number,
+      nivel_cliente: payload.eventDetails?.name,
+      tipo: payload.lastMessage?.type,
+      ultima_mensagem: payload.lastMessage?.text,
+      tipo_evento: payload.eventID,
+      tipo_usuario: payload.eventDetails?.type,
+      perfil_contato: payload.perfilContato,
+      info: payload.unreadMessages,
+      labels: payload.labels,
+      evento_id: payload.eventDetails?.id,
+      evento_nome: payload.eventDetails?.name,
+      evento_tipo: payload.eventDetails?.type,
+      raw_payload: payload
+    });
 
-    if (contact_number) {
-      await pool.query(`INSERT INTO contatos (numero, nome, user_assigned, labels, perfil, ultima_interacao) VALUES ($1, $2, $3, $4, $5, NOW()) ON CONFLICT (numero) DO UPDATE SET nome = COALESCE(EXCLUDED.nome, contatos.nome), user_assigned = COALESCE(EXCLUDED.user_assigned, contatos.user_assigned), labels = EXCLUDED.labels, perfil = EXCLUDED.perfil, ultima_interacao = NOW(), atualizado_em = NOW()`, [contact_number, contact_name, user_assigned, JSON.stringify(labels), JSON.stringify(perfil_contato)]);
-    }
+    if (error) throw error;
 
-    console.log('Evento CRM salvo:', event_type);
-    res.status(200).json({ status: 'success', message: 'Evento CRM salvo' });
+    res.status(200).json({ success: true, message: 'CRM webhook recebido' });
   } catch (error) {
-    console.error('Erro ao salvar evento CRM:', error);
-    res.status(500).json({ status: 'error', message: error.message });
+    console.error('Erro webhook CRM:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
-const PORT = process.env.PORT || 3000;
+app.post('/webhook/mensagens', async (req, res) => {
+  try {
+    const payload = req.body;
+    const ed = payload.eventDetails || {};
+    const eid = ed.id || {};
+
+    const { error } = await supabase.from('mensagens').insert({
+      nome_contato: payload.name,
+      numero_contato: payload.number,
+      usuario: payload.user,
+      unread_messages: payload.unreadMessages,
+      labels: payload.labels,
+      last_msg_text: payload.lastMessage?.text,
+      last_msg_tipo: payload.lastMessage?.type,
+      last_msg_timestamp: payload.lastMessage?.timestamp ? new Date(payload.lastMessage.timestamp * 1000).toISOString() : null,
+      event_id: payload.eventID,
+      msg_from_me: eid.fromMe,
+      msg_remote: eid.remote,
+      msg_id: eid.id,
+      msg_serialized: eid._serialized,
+      msg_body: ed.body,
+      msg_type: ed.type,
+      msg_subtype: ed.subtype,
+      msg_timestamp: ed.t ? new Date(ed.t * 1000).toISOString() : null,
+      msg_from_jid: ed.from,
+      msg_to_jid: ed.to,
+      msg_ack: ed.ack,
+      msg_is_new: ed.isNewMsg,
+      msg_viewed: ed.viewed,
+      msg_star: ed.star,
+      msg_kic_notified: ed.kicNotified,
+      msg_is_from_template: ed.isFromTemplate,
+      msg_is_ads_media: ed.isAdsMedia,
+      msg_poll_invalidated: ed.pollInvalidated,
+      msg_is_forwarded: ed.isForwarded,
+      msg_is_question: ed.isQuestion,
+      msg_has_reaction: ed.hasReaction,
+      msg_is_event_canceled: ed.isEventCanceled,
+      msg_event_invalidated: ed.eventInvalidated,
+      msg_is_avatar: ed.isAvatar,
+      msg_question_responses_count: ed.questionResponsesCount,
+      msg_read_question_responses_count: ed.readQuestionResponsesCount,
+      msg_labels: ed.labels,
+      msg_mentioned_jid_list: ed.mentionedJidList,
+      msg_group_mentions: ed.groupMentions,
+      msg_disappearing_initiator: ed.disappearingModeInitiator,
+      msg_disappearing_trigger: ed.disappearingModeTrigger,
+      msg_view_mode: ed.viewMode,
+      message_secret: ed.messageSecret,
+      limit_sharing: ed.limitSharing,
+      perfil_contato: payload.perfilContato,
+      raw_payload: payload
+    });
+
+    if (error) throw error;
+
+    res.status(200).json({ success: true, message: 'Mensagem webhook recebido' });
+  } catch (error) {
+    console.error('Erro webhook mensagens:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
